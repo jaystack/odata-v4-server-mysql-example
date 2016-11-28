@@ -1,0 +1,8 @@
+node_modules
+.vscode
+npm-debug.log
+yarn-error.log
+coverage
+report
+.tslint
+lib
