@@ -1,180 +1,224 @@
 import { createQuery } from "odata-v4-mysql";
 import { ODataController, Edm, odata, ODataQuery } from "odata-v4-server";
 import { Product, Category } from "./model";
-import mysqlConnection from "./connection";
-import promisifyWithDbName from "./utils/promisifyWithDbName";
+import connect from "./connect";
 import getDeltaObjectInSQL from "./utils/getDeltaObjectInSQL";
-import mapDiscontinued from "./utils/mapDiscontinued";
+import convertDiscontinuedValues from "./utils/convertDiscontinuedValues";
 import filterNullValues from "./utils/filterNullValues";
 import getPatchQueryParameters from "./utils/getPatchQueryParameters";
 import getPatchQueryString from "./utils/getPatchQueryString";
 
 @odata.type(Product)
 export class ProductsController extends ODataController {
+    
     @odata.GET
     async find( @odata.query query: ODataQuery): Promise<Product[]> {
-        const connection = promisifyWithDbName(await mysqlConnection());
+        const db = await connect();
+        await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        const results = await connection.query(`SELECT ${sqlQuery.select} FROM Products WHERE ${sqlQuery.where}`, [...sqlQuery.parameters]);
-        return mapDiscontinued(results);
+        // TODO ezt mindenhova betenni query előtt
+        const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE ${sqlQuery.where}`, [...sqlQuery.parameters]);
+        return convertDiscontinuedValues(results);
     }
 
     @odata.GET
     async findOne( @odata.key key: number, @odata.query query: ODataQuery): Promise<Product> {
-        const connection = promisifyWithDbName(await mysqlConnection());
+        const db = await connect();
+        await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        const results = await connection.query(`SELECT ${sqlQuery.select} FROM Products WHERE Id = ? AND (${sqlQuery.where})`, [key, ...sqlQuery.parameters]);
-        return mapDiscontinued(filterNullValues(results))[0];
+        const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE Id = ? AND (${sqlQuery.where})`, [key, ...sqlQuery.parameters]);
+        // TODO convertResult függvény-be szervezzünk bele mindent
+        return convertDiscontinuedValues(filterNullValues(results))[0];
     }
 
     @odata.GET("Category")
     async getCategory( @odata.result result: Product, @odata.query query: ODataQuery): Promise<Category> {
-        const connection = promisifyWithDbName(await mysqlConnection());
+        const db = await connect();
+        await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        return (await connection.query(`SELECT ${sqlQuery.select} FROM Categories WHERE Id = ? AND (${sqlQuery.where})`, [result.CategoryId, ...sqlQuery.parameters]))[0];
+        const results = await db.query(`SELECT ${sqlQuery.select} FROM Categories WHERE Id = ? AND (${sqlQuery.where})`, [result.CategoryId, ...sqlQuery.parameters]);
+        return results[0];
     }
 
     @odata.POST("Category").$ref
     @odata.PUT("Category").$ref
     async setCategory( @odata.key key: number, @odata.link link: string): Promise<number> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`UPDATE Products SET CategoryId = ? WHERE Id = ?`, [link, key]);
+        const db = await connect();
+        await db.query("USE northwind");
+        return await db.query(`UPDATE Products SET CategoryId = ? WHERE Id = ?`, [link, key]);
     }
 
     @odata.DELETE("Category").$ref
     async unsetCategory( @odata.key key: number): Promise<number> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`UPDATE Products SET CategoryId = NULL WHERE Id = ?`, [key]);
+        const db = await connect();
+        await db.query("USE northwind");
+        return await db.query(`UPDATE Products SET CategoryId = NULL WHERE Id = ?`, [key]);
     }
 
     @odata.POST
     async insert( @odata.body data: any): Promise<Product> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        const result = await connection.query(`INSERT INTO Products VALUES (?,?,?,?,?,?);`, [data.Id, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued]);
+        const db = await connect();
+        await db.query("USE northwind");
+        // TODO utils/insert
+        const result = await db.query(`INSERT INTO Products VALUES (?,?,?,?,?,?);`,
+                        [data.Id, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued]);
         return Object.assign({}, data, { Id: result.insertId });
     }
 
     @odata.PUT
     async upsert( @odata.key key: number, @odata.body data: any, @odata.context context: any): Promise<Product> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`INSERT INTO Products (Id,QuantityPerUnit,UnitPrice,CategoryId,Name,Discontinued) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE QuantityPerUnit=?,UnitPrice=?,CategoryId=?,Name=?,Discontinued=?`, [key, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued]);
+        const db = await connect();
+        await db.query("USE northwind");
+        return await db.query(`
+                            INSERT INTO Products
+                                (Id,QuantityPerUnit,UnitPrice,CategoryId,Name,Discontinued)
+                            VALUES
+                                (?,?,?,?,?,?)
+                            ON DUPLICATE KEY UPDATE
+                                QuantityPerUnit=?,UnitPrice=?,CategoryId=?,Name=?,Discontinued=?`,
+                            [key, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued,
+                            data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued]);
     }
 
     @odata.PATCH
     async update( @odata.key key: number, @odata.body delta: any): Promise<any> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(getPatchQueryString('Products', delta), getPatchQueryParameters(key, delta));
+        const db = await connect();
+        await db.query("USE northwind");
+        // ezt elrejteni egy update függvénybe
+        return await db.query(getPatchQueryString('Products', delta), getPatchQueryParameters(key, delta));
     }
 
     @odata.DELETE
     async remove( @odata.key key: number): Promise<number> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`DELETE FROM Products WHERE Id = ?`, [key]);
+        const db = await connect();
+        await db.query("USE northwind");
+        return await db.query(`DELETE FROM Products WHERE Id = ?`, [key]);
     }
 
     @Edm.Function
     @Edm.EntityType(Product)
     async getCheapest(): Promise<any> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        const results: Product[] = await connection.query(`SELECT * FROM Products WHERE UnitPrice = (SELECT MIN(UnitPrice) FROM Products)`);
-        return mapDiscontinued(results)[0];
+        const db = await connect();
+        await db.query("USE northwind");
+        const results: Product[] = await db.query(`SELECT * FROM Products WHERE UnitPrice = (SELECT MIN(UnitPrice) FROM Products)`);
+        // TODO egységes convertResult fv használata
+        return convertDiscontinuedValues(results)[0];
     }
 
     @Edm.Function
     @Edm.Collection(Edm.EntityType(Product))
     async getInPriceRange( @Edm.Decimal min: number, @Edm.Decimal max: number): Promise<Product[]> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        const results = await connection.query(`SELECT * FROM Products WHERE UnitPrice BETWEEN ? AND ?`, [min, max]);
-        return mapDiscontinued(results);
+        const db = await connect();
+        await db.query("USE northwind");
+        const results = await db.query(`SELECT * FROM Products WHERE UnitPrice BETWEEN ? AND ?`, [min, max]);
+        // TODO egységes convertResult fv használata
+        return convertDiscontinuedValues(results);
     }
 
     @Edm.Action
     async swapPrice( @Edm.String key1: number, @Edm.String key2: number) {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        const product1 = (await connection.query(`SELECT * FROM Products WHERE Id = ?`, [key1]))[0];
-        const product2 = (await connection.query(`SELECT * FROM Products WHERE Id = ?`, [key2]))[0];
-        await connection.query(`UPDATE Products SET UnitPrice = ? WHERE Id = ?`, [product1.UnitPrice, key2]);
-        await connection.query(`UPDATE Products SET UnitPrice = ? WHERE Id = ?`, [product2.UnitPrice, key1]);
+        const db = await connect();
+        await db.query("USE northwind");
+        const product1 = (await db.query(`SELECT * FROM Products WHERE Id = ?`, [key1]))[0];
+        const product2 = (await db.query(`SELECT * FROM Products WHERE Id = ?`, [key2]))[0];
+        await db.query(`UPDATE Products SET UnitPrice = ? WHERE Id = ?`, [product1.UnitPrice, key2]);
+        await db.query(`UPDATE Products SET UnitPrice = ? WHERE Id = ?`, [product2.UnitPrice, key1]);
     }
 
     @Edm.Action
     async discountProduct( @Edm.String productId: number, @Edm.Int32 percent: number): Promise<void> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        const product = await connection.query(`SELECT * FROM Products WHERE Id = ?`, [productId]);
+        const db = await connect();
+        await db.query("USE northwind");
+        const product = await db.query(`SELECT * FROM Products WHERE Id = ?`, [productId]);
         const discountedPrice = ((100 - percent) / 100) * product[0].UnitPrice;
-        await connection.query(`UPDATE Products SET UnitPrice = ? WHERE Id = ?`, [discountedPrice, productId]);
+        await db.query(`UPDATE Products SET UnitPrice = ? WHERE Id = ?`, [discountedPrice, productId]);
     }
 }
 
 @odata.type(Category)
 export class CategoriesController extends ODataController {
+    
     @odata.GET
     async find( @odata.query query: ODataQuery): Promise<Category[]> {
-        const connection = promisifyWithDbName(await mysqlConnection());
+        const db = await connect();
+        await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        return await connection.query(`SELECT ${sqlQuery.select} FROM Categories WHERE ${sqlQuery.where}`, [...sqlQuery.parameters]);
+        return await db.query(`SELECT ${sqlQuery.select} FROM Categories WHERE ${sqlQuery.where}`, [...sqlQuery.parameters]);
     }
 
     @odata.GET
     async findOne( @odata.key key: number, @odata.query query: ODataQuery): Promise<Category> {
-        const connection = promisifyWithDbName(await mysqlConnection());
+        const db = await connect();
+        await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        const results = await connection.query(`SELECT ${sqlQuery.select} FROM Categories WHERE Id = ? AND (${sqlQuery.where})`, [key, ...sqlQuery.parameters]);
+        const results = await db.query(`SELECT ${sqlQuery.select} FROM Categories WHERE Id = ? AND (${sqlQuery.where})`, [key, ...sqlQuery.parameters]);
         return filterNullValues(results)[0];
     }
 
     @odata.GET("Products")
     async getProducts( @odata.result result: Category, @odata.query query: ODataQuery): Promise<Product[]> {
-        const connection = promisifyWithDbName(await mysqlConnection());
+        const db = await connect();
+        await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        const results = await connection.query(`SELECT ${sqlQuery.select} FROM Products WHERE CategoryId = ? AND (${sqlQuery.where})`, [result.Id, ...sqlQuery.parameters]);
-        return mapDiscontinued(results);
+        const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE CategoryId = ? AND (${sqlQuery.where})`, [result.Id, ...sqlQuery.parameters]);
+        return convertDiscontinuedValues(results);
     }
 
     @odata.GET("Products")
     async getProduct( @odata.key key: number, @odata.result result: Category, @odata.query query: ODataQuery): Promise<Product> {
-        const connection = promisifyWithDbName(await mysqlConnection());
+        const db = await connect();
+        await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        const results = await connection.query(`SELECT ${sqlQuery.select} FROM Products WHERE Id = ? AND (${sqlQuery.where})`, [key, , result.Id, ...sqlQuery.parameters]);
-        return mapDiscontinued(results)[0];
+        const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE Id = ? AND (${sqlQuery.where})`, [key, , result.Id, ...sqlQuery.parameters]);
+        return convertDiscontinuedValues(results)[0];
     }
 
     @odata.POST("Products").$ref
     @odata.PUT("Products").$ref
     async setCategory( @odata.key key: number, @odata.link link: string): Promise<number> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return (await connection.query(`UPDATE Products SET CategoryId = ? WHERE Id = ? `, [key, link]))[0];
+        const db = await connect();
+        await db.query("USE northwind");
+        return (await db.query(`UPDATE Products SET CategoryId = ? WHERE Id = ? `, [key, link]))[0];
     }
 
     @odata.DELETE("Products").$ref
     async unsetCategory( @odata.key key: number, @odata.link link: string): Promise<number> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return (await connection.query(`UPDATE Products SET CategoryId = NULL WHERE Id = ?`, [link]))[0];
+        const db = await connect();
+        await db.query("USE northwind");
+        return (await db.query(`UPDATE Products SET CategoryId = NULL WHERE Id = ?`, [link]))[0];
     }
 
     @odata.POST
     async insert( @odata.body data: any): Promise<Category> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        const result = await connection.query(`INSERT INTO Categories VALUES (?,?,?);`, [data.Id, data.Description, data.Name]);
-        const res = Object.assign({}, data, { Id: result.insertId });
-        return res;
+        const db = await connect();
+        await db.query("USE northwind");
+        // TODO utils/insert
+        const result = await db.query(`INSERT INTO Categories VALUES (?,?,?);`, [data.Id, data.Description, data.Name]);
+        return Object.assign({}, data, { Id: result.insertId });
     }
 
     @odata.PUT
     async upsert( @odata.key key: number, @odata.body data: any): Promise<Category> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`INSERT INTO Categories (Id,Description,Name) VALUES (?,?,?) ON DUPLICATE KEY UPDATE Description=?,Name=?`, [key, data.Description, data.Name, data.Description, data.Name]);
+        const db = await connect();
+        await db.query("USE northwind");
+        return await db.query(`INSERT INTO Categories
+                                (Id,Description,Name) VALUES (?,?,?)
+                                ON DUPLICATE KEY UPDATE Description=?,Name=?`,
+                                [key, data.Description, data.Name, data.Description, data.Name]);
     }
 
     @odata.PATCH
     async update( @odata.key key: number, @odata.body delta: any): Promise<number> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(getPatchQueryString('Categories', delta), getPatchQueryParameters(key, delta));
+        const db = await connect();
+        await db.query("USE northwind");
+        // TODO utils/update
+        return await db.query(getPatchQueryString('Categories', delta), getPatchQueryParameters(key, delta));
     }
 
     @odata.DELETE
     async remove( @odata.key key: number): Promise<number> {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`DELETE FROM Categories WHERE Id = ?`, [key]);
+        const db = await connect();
+        await db.query("USE northwind");
+        return await db.query(`DELETE FROM Categories WHERE Id = ?`, [key]);
     }
 }

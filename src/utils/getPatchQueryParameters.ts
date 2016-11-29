@@ -1,9 +1,4 @@
-function getObjectValues(delta: any, deltaKeys: any[]): any[] {
-  return deltaKeys.map(key => delta[key]);
-}
-
-export default function getPatchQueryParameters(key: number, delta: any): any[] {
-  const dataKeys = Object.keys(delta);
-  const dataValues = getObjectValues(delta, dataKeys);
-  return [...dataValues, key];
+export default function getPatchQueryParameters(additionalValue: number, delta: any): any[] {
+  const values = Object.keys(delta).map(key => delta[key]);
+  return [...values, additionalValue];
 }

@@ -6,4 +6,3 @@ export default function getPatchQueryString(tableName: string, delta: any): stri
   const deltaKeys = Object.keys(delta);
   return `UPDATE ${tableName} SET ${getUpdateParameters(deltaKeys)} WHERE Id = ?`;
 }
-

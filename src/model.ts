@@ -1,7 +1,7 @@
 import { Edm, odata } from "odata-v4-server";
-import mysqlConnection from "./connection";
+import connect from "./connect";
 import promisifyWithDbName from "./utils/promisifyWithDbName";
-import mapDiscontinued from "./utils/mapDiscontinued";
+import convertDiscontinuedValues from "./utils/convertDiscontinuedValues";
 
 @odata.namespace("NorthwindMySQL")
 @Edm.Annotate({
@@ -70,14 +70,16 @@ export class Product {
 
     @Edm.Action
     async invertDiscontinued( @odata.result result: Product) {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`UPDATE Products SET Discontinued = ? WHERE Id = ? `, [!result.Discontinued, result.Id]);
+        const db = await connect();
+        await db.query(`USE northwind`);
+        return await db.query(`UPDATE Products SET Discontinued = ? WHERE Id = ? `, [!result.Discontinued, result.Id]);
     }
 
     @Edm.Action
     async setDiscontinued( @odata.result result: Product, @Edm.Boolean value: boolean) {
-        const connection = promisifyWithDbName(await mysqlConnection());
-        return await connection.query(`UPDATE Products SET Discontinued = ? WHERE Id = ? `, [value, result.Id]);
+        const db = await connect();
+        await db.query(`USE northwind`);
+        return await db.query(`UPDATE Products SET Discontinued = ? WHERE Id = ? `, [value, result.Id]);
     }
 }
 

@@ -1,4 +1,6 @@
-export default function promisifyWithDbName(client) {
+// TODO törlés
+
+export default function promisifyWithDbName(client, dbName: string) {
   return new Proxy(client, {
     get(target, name) {
       if (name !== 'query')

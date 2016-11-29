@@ -12,14 +12,7 @@
     "tsc": "tsc",
     "tsc:w": "tsc -w",
     "test": "mocha test/*.spec.js --reporter mochawesome --reporter-options reportDir=report,reportName=odata-v4-server,reportTitle=\"OData V4 Server\"",
-    "pretest": "npm run build",
-    "docker-build": "docker build -t odata-v4-server-mysql-example .",
-    "docker-run": "docker run --name odata-v4-server-mysql-example --link mongo:mongo -p 3000:3000 -d odata-v4-server-mysql-example",
-    "docker-stop": "docker stop odata-v4-server-mysql-example",
-    "docker-clean-containers": "docker rm $(docker ps -a -q)",
-    "docker-clean-images": "docker rmi $(docker images -a -q)",
-    "docker-clean": "npm run docker-clean-containers && npm run docker-clean-images",
-    "docker-enter": "docker exec -ti odata-v4-server-mysql-example bash"
+    "pretest": "npm run build"
   },
   "repository": {
     "type": "git",

@@ -4,7 +4,7 @@ export default function promisify(client) {
             if (name !== 'query')
                 return target[name];
 
-            return function (...args) {
+            return function (...args): Promise<any> {
                 return new Promise((resolve, reject) => {
                     target.query(...args, (err, result) => {
                         if (err) return reject(err);
