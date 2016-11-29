@@ -2,7 +2,12 @@ import { createQuery } from "odata-v4-mysql";
 import { ODataController, Edm, odata, ODataQuery } from "odata-v4-server";
 import { Product, Category } from "./model";
 import mysqlConnection from "./connection";
-import { promisifyWithDbName, getDeltaObjectInSQL, mapDiscontinued, filterNullValues, getPatchQueryParameters, getPatchQueryString } from "./utils";
+import promisifyWithDbName from "./utils/promisifyWithDbName";
+import getDeltaObjectInSQL from "./utils/getDeltaObjectInSQL";
+import mapDiscontinued from "./utils/mapDiscontinued";
+import filterNullValues from "./utils/filterNullValues";
+import getPatchQueryParameters from "./utils/getPatchQueryParameters";
+import getPatchQueryString from "./utils/getPatchQueryString";
 
 @odata.type(Product)
 export class ProductsController extends ODataController {

@@ -1,6 +1,7 @@
 import { Edm, odata } from "odata-v4-server";
 import mysqlConnection from "./connection";
-import { promisifyWithDbName, mapDiscontinued } from "./utils";
+import promisifyWithDbName from "./utils/promisifyWithDbName";
+import mapDiscontinued from "./utils/mapDiscontinued";
 
 @odata.namespace("NorthwindMySQL")
 @Edm.Annotate({
