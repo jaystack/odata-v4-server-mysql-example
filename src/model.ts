@@ -1,7 +1,5 @@
 import { Edm, odata } from "odata-v4-server";
 import connect from "./connect";
-import promisifyWithDbName from "./utils/promisifyWithDbName";
-import convertDiscontinuedValues from "./utils/convertDiscontinuedValues";
 
 @odata.namespace("NorthwindMySQL")
 @Edm.Annotate({

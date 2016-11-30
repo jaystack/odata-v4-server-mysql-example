@@ -2,23 +2,20 @@ import { createQuery } from "odata-v4-mysql";
 import { ODataController, Edm, odata, ODataQuery } from "odata-v4-server";
 import { Product, Category } from "./model";
 import connect from "./connect";
-import getDeltaObjectInSQL from "./utils/getDeltaObjectInSQL";
-import convertDiscontinuedValues from "./utils/convertDiscontinuedValues";
-import filterNullValues from "./utils/filterNullValues";
-import getPatchQueryParameters from "./utils/getPatchQueryParameters";
-import getPatchQueryString from "./utils/getPatchQueryString";
+import convertResult from "./utils/convertResult";
+import update from "./utils/update";
+import insert from './utils/insert';
 
 @odata.type(Product)
 export class ProductsController extends ODataController {
-    
+
     @odata.GET
     async find( @odata.query query: ODataQuery): Promise<Product[]> {
         const db = await connect();
         await db.query("USE northwind");
         const sqlQuery = createQuery(query);
-        // TODO ezt mindenhova betenni query előtt
         const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE ${sqlQuery.where}`, [...sqlQuery.parameters]);
-        return convertDiscontinuedValues(results);
+        return convertResult(results);
     }
 
     @odata.GET
@@ -27,8 +24,7 @@ export class ProductsController extends ODataController {
         await db.query("USE northwind");
         const sqlQuery = createQuery(query);
         const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE Id = ? AND (${sqlQuery.where})`, [key, ...sqlQuery.parameters]);
-        // TODO convertResult függvény-be szervezzünk bele mindent
-        return convertDiscontinuedValues(filterNullValues(results))[0];
+        return convertResult(results)[0];
     }
 
     @odata.GET("Category")
@@ -59,10 +55,7 @@ export class ProductsController extends ODataController {
     async insert( @odata.body data: any): Promise<Product> {
         const db = await connect();
         await db.query("USE northwind");
-        // TODO utils/insert
-        const result = await db.query(`INSERT INTO Products VALUES (?,?,?,?,?,?);`,
-                        [data.Id, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued]);
-        return Object.assign({}, data, { Id: result.insertId });
+        return await insert(db, 'Products', data);
     }
 
     @odata.PUT
@@ -76,16 +69,15 @@ export class ProductsController extends ODataController {
                                 (?,?,?,?,?,?)
                             ON DUPLICATE KEY UPDATE
                                 QuantityPerUnit=?,UnitPrice=?,CategoryId=?,Name=?,Discontinued=?`,
-                            [key, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued,
-                            data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued]);
+            [key, data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued,
+                data.QuantityPerUnit, data.UnitPrice, data.CategoryId, data.Name, data.Discontinued]);
     }
 
     @odata.PATCH
     async update( @odata.key key: number, @odata.body delta: any): Promise<any> {
         const db = await connect();
         await db.query("USE northwind");
-        // ezt elrejteni egy update függvénybe
-        return await db.query(getPatchQueryString('Products', delta), getPatchQueryParameters(key, delta));
+        return update(db, delta, key, 'Products');
     }
 
     @odata.DELETE
@@ -97,12 +89,11 @@ export class ProductsController extends ODataController {
 
     @Edm.Function
     @Edm.EntityType(Product)
-    async getCheapest(): Promise<any> {
+    async getCheapest(): Promise<Product> {
         const db = await connect();
         await db.query("USE northwind");
         const results: Product[] = await db.query(`SELECT * FROM Products WHERE UnitPrice = (SELECT MIN(UnitPrice) FROM Products)`);
-        // TODO egységes convertResult fv használata
-        return convertDiscontinuedValues(results)[0];
+        return convertResult(results)[0];
     }
 
     @Edm.Function
@@ -111,8 +102,7 @@ export class ProductsController extends ODataController {
         const db = await connect();
         await db.query("USE northwind");
         const results = await db.query(`SELECT * FROM Products WHERE UnitPrice BETWEEN ? AND ?`, [min, max]);
-        // TODO egységes convertResult fv használata
-        return convertDiscontinuedValues(results);
+        return convertResult(results);
     }
 
     @Edm.Action
@@ -137,7 +127,7 @@ export class ProductsController extends ODataController {
 
 @odata.type(Category)
 export class CategoriesController extends ODataController {
-    
+
     @odata.GET
     async find( @odata.query query: ODataQuery): Promise<Category[]> {
         const db = await connect();
@@ -152,7 +142,7 @@ export class CategoriesController extends ODataController {
         await db.query("USE northwind");
         const sqlQuery = createQuery(query);
         const results = await db.query(`SELECT ${sqlQuery.select} FROM Categories WHERE Id = ? AND (${sqlQuery.where})`, [key, ...sqlQuery.parameters]);
-        return filterNullValues(results)[0];
+        return convertResult(results)[0];
     }
 
     @odata.GET("Products")
@@ -161,7 +151,7 @@ export class CategoriesController extends ODataController {
         await db.query("USE northwind");
         const sqlQuery = createQuery(query);
         const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE CategoryId = ? AND (${sqlQuery.where})`, [result.Id, ...sqlQuery.parameters]);
-        return convertDiscontinuedValues(results);
+        return convertResult(results);
     }
 
     @odata.GET("Products")
@@ -170,7 +160,7 @@ export class CategoriesController extends ODataController {
         await db.query("USE northwind");
         const sqlQuery = createQuery(query);
         const results = await db.query(`SELECT ${sqlQuery.select} FROM Products WHERE Id = ? AND (${sqlQuery.where})`, [key, , result.Id, ...sqlQuery.parameters]);
-        return convertDiscontinuedValues(results)[0];
+        return convertResult(results)[0];
     }
 
     @odata.POST("Products").$ref
@@ -192,9 +182,7 @@ export class CategoriesController extends ODataController {
     async insert( @odata.body data: any): Promise<Category> {
         const db = await connect();
         await db.query("USE northwind");
-        // TODO utils/insert
-        const result = await db.query(`INSERT INTO Categories VALUES (?,?,?);`, [data.Id, data.Description, data.Name]);
-        return Object.assign({}, data, { Id: result.insertId });
+        return await insert(db, 'Categories', data);
     }
 
     @odata.PUT
@@ -204,15 +192,14 @@ export class CategoriesController extends ODataController {
         return await db.query(`INSERT INTO Categories
                                 (Id,Description,Name) VALUES (?,?,?)
                                 ON DUPLICATE KEY UPDATE Description=?,Name=?`,
-                                [key, data.Description, data.Name, data.Description, data.Name]);
+            [key, data.Description, data.Name, data.Description, data.Name]);
     }
 
     @odata.PATCH
     async update( @odata.key key: number, @odata.body delta: any): Promise<number> {
         const db = await connect();
         await db.query("USE northwind");
-        // TODO utils/update
-        return await db.query(getPatchQueryString('Categories', delta), getPatchQueryParameters(key, delta));
+        return update(db, delta, key, 'Categories');
     }
 
     @odata.DELETE
