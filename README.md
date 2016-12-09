@@ -15,13 +15,13 @@ Also there are sevaral other examples on **JayStack OData V4 Server (odata-v4-se
 ## Technical details of this example
 ### Setting up the database
 You have to create the database manually using these commands in [server.ts](https://github.com/jaystack/odata-v4-server-mysql-example/blob/master/src/server.ts#L17-L34):
-```js
-await db.query(`DROP DATABASE IF EXISTS northwind`);
-await db.query(`CREATE DATABASE northwind`);
-await db.query(`USE northwind`);
+```SQL
+DROP DATABASE IF EXISTS northwind;
+CREATE DATABASE northwind;
+USE northwind;
 ```
 
-### Setting up the connection string to your MySQL Server
+### Setting up the connection to your MySQL Server
 You have to customize the db connection options
 by editing [connect.ts](https://github.com/jaystack/odata-v4-server-mysql-example/blob/master/src/connect.ts#L4-L8).
 By default, these are the options:
