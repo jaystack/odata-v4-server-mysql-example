@@ -7,8 +7,8 @@ This example uses **JayStack OData V4 Server [(odata-v4-server)](https://github.
 You can read more about **JayStack OData V4 Server** in our tutorial at ...
 
 Also there are sevaral other examples on **JayStack OData V4 Server (odata-v4-server)**:
-- [client example using React, etc. ---  to be checked](https://github.com/jaystack/odata-v4-client-examples)
-- [server example using MySql](https://github.com/jaystack/odata-v4-mysql-example)
+- [client example using React](https://github.com/jaystack/odata-v4-server-react-client-example)
+- [server example using MS SQL](https://github.com/jaystack/odata-v4-server-mssql-example)
 - [server example using PostgreSql](https://github.com/jaystack/odata-v4-server-pgsql-example)
 - [server example using MongoDb](https://github.com/jaystack/odata-v4-server-mongodb-example)
 
@@ -32,9 +32,22 @@ const config = {
     password: "mysql"
 };
 ```
+By default, the server will listen on `port` `3306` therefore it is not set above.
 
-### Starting the sample application
-Use command `npm start`
+### Building the application
+```
+npm run build
+```
+
+### Testing the application
+```
+npm test
+```
+
+### Starting the application
+```
+npm start
+```
 
 ### Creating sample data
 After starting the application (it will listen on `localhost:3000` by default) you can generate / recreate the sample dataset

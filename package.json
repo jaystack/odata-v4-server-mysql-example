@@ -8,6 +8,7 @@
     "test": "test"
   },
   "scripts": {
+    "start": "node .",
     "build": "npm run tsc",
     "tsc": "tsc",
     "tsc:w": "tsc -w",
