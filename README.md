@@ -2,9 +2,11 @@
 MySQL Server example for **[JayStack OData V4 Server](https://github.com/jaystack/odata-v4-server)**
 
 ## About JayStack OData V4 Server (odata-v4-server)
+With JayStack OData v4 Server you can build your own data endpoints without the hassle of implementing any protocol-level code. This framework binds OData v4 requests to your annotated controller functions, and compiles OData v4 compatible response. Clients can access services through OData-compliant HTTP requests. We recommend the JayData library for consuming OData v4 APIs.
+
 This example uses **JayStack OData V4 Server [(odata-v4-server)](https://github.com/jaystack/odata-v4-server)** and [odata-v4-mysql](https://github.com/jaystack/odata-v4-mysql) repositories.
 
-You can read more about **JayStack OData V4 Server** in our tutorial at ...
+You can build your own OData v4 compatible service step-by-step by following this [tutorial](http://jaydata.org/blog/jaystack-odata-v4-server-with-mongodb-tutorial)
 
 Also there are sevaral other examples on **JayStack OData V4 Server (odata-v4-server)**:
 - [client example using React](https://github.com/jaystack/odata-v4-server-react-client-example)
